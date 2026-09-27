@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><title>Neyzam admin</title>
+<style>
+:root{color-scheme:dark}
+body{margin:0;background:#050b14;color:#e8eef5;font:15px/1.5 system-ui,sans-serif;padding:24px}
+h1{font-size:20px;margin:0 0 16px}
+input,button,select{font:inherit;padding:8px 12px;border-radius:8px;border:1px solid #24405a;background:#0b1a2b;color:inherit}
+button{cursor:pointer;background:#14b8a6;color:#02100f;border-color:#14b8a6;font-weight:600}
+.card{border:1px solid #1b3348;background:#0a1626;border-radius:12px;padding:16px;margin:12px 0}
+.row{display:flex;flex-wrap:wrap;gap:8px 20px;color:#9fb3c8;font-size:13px}
+.top{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center}
+p{white-space:pre-wrap;margin:8px 0 0}
+a{color:#5eead4}#err{color:#fca5a5}
+</style></head><body>
+<h1>Bookings</h1>
+<form id="f"><input id="t" type="password" placeholder="Password" autocomplete="current-password"> <button>Load</button> <span id="err"></span></form>
+<div id="list"></div>
+<script>
+const f=document.getElementById('f'),t=document.getElementById('t'),list=document.getElementById('list'),err=document.getElementById('err');
+const H=()=>({authorization:'Bearer '+t.value});
+const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+async function load(){
+  err.textContent='';
+  const r=await fetch('/api/admin/bookings',{headers:H(),cache:'no-store'});
+  if(!r.ok){err.textContent=r.status===401?'Wrong password.':'Error '+r.status;list.innerHTML='';return}
+  const {bookings}=await r.json();
+  list.innerHTML=bookings.length?bookings.map(b=>`<div class="card"><div class="top"><b>${esc(b.name)}</b>
+  <select data-id="${b.id}">${['new','contacted','done'].map(s=>`<option${s===b.status?' selected':''}>${s}</option>`).join('')}</select></div>
+  <div class="row"><a href="mailto:${esc(b.email)}">${esc(b.email)}</a><span>${esc(b.company)}</span><span>${esc(b.topic)}</span>
+  <span>${esc(b.preferred_date)} ${esc(b.preferred_window)} ${esc(b.timezone)}</span><span>${esc(b.created_at)}</span></div><p>${esc(b.process)}</p></div>`).join(''):'<p>No bookings yet.</p>';
+}
+f.addEventListener('submit',e=>{e.preventDefault();try{sessionStorage.setItem('nt',t.value)}catch{}load()});
+list.addEventListener('change',async e=>{const s=e.target.closest('select');if(!s)return;
+  await fetch('/api/admin/bookings',{method:'PATCH',headers:{...H(),'content-type':'application/json'},body:JSON.stringify({id:+s.dataset.id,status:s.value})})});
+try{const v=sessionStorage.getItem('nt');if(v){t.value=v;load()}}catch{}
+</script></body></html>
